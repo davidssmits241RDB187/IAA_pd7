@@ -10,24 +10,33 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 def load_image(path):
-    img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    filename = os.path.basename(path).lower()
 
-    if img is None:
-        raise FileNotFoundError(f"Cannot read image: {path}")
+    if filename == "gray.jpg":
+        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        is_gray = True
+    else:
+        img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+        if img is None:
+            raise FileNotFoundError(f"Cannot read image: {path}")
 
-    is_gray = len(img.shape) == 2 or (len(img.shape) == 3 and img.shape[2] == 1)
+        if len(img.shape) == 2:
+            is_gray = True
+        elif len(img.shape) == 3 and img.shape[2] == 1:
+            img = img[:, :, 0]
+            is_gray = True
+        else:
+            is_gray = False
 
     img = img.astype(np.float32) / 255.0
-
     return img, is_gray
 
 
 def add_impulse_noise(image, amount=0.2):
-
     noisy = image.copy()
     h, w = image.shape[:2]
-    total_pixels = h * w
-    num_noisy = int(total_pixels * amount)
+    num_noisy = int(h * w * amount)
+
     coords_h = np.random.randint(0, h, num_noisy)
     coords_w = np.random.randint(0, w, num_noisy)
 
@@ -48,7 +57,7 @@ def remove_noise(image):
     return blurred.astype(np.float32)
 
 
-def gamma_correction(image, gamma_value=2.0):
+def gamma_correction(image, gamma_value=0.7):
 
     corrected = np.power(image, gamma_value)
 
@@ -82,7 +91,6 @@ def mean_brightness(img, is_gray):
 def activate_appropriate_contrast_processor(img, is_gray):
 
     mean_v = mean_brightness(img, is_gray)
-
     if mean_v > 200:
         processed = gamma_correction(img)
         title = "Gamma Correction"
@@ -208,7 +216,7 @@ def process_single_image(path, idx):
 
 def main():
 
-    files = ["pibble.jpg", "car.jpg", "beach.jpg"]
+    files = ["pibble.jpg", "dark.jpeg", "beach.jpg", "gray.jpg"]
 
     for idx, file in enumerate(files, start=1):
         if os.path.exists(file):
